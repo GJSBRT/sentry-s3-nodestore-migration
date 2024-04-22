@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"bytes"
 	"sync"
-	"time"
+	"flag"
 	"context"
 	"encoding/base64"
 	
@@ -16,11 +16,11 @@ import (
 )
 
 var (
-	psqlUrl = flag.String("db", "postgres://postgres:@localhost:5432", "postgres db url. e.g. postgres://postgres:@localhost:5432")
-	s3Url = flag.String("s3domain", "", "s3 provider domain eg. s3.example.com")
-	s3Key = flag.String("s3key", "", "s3 access key.")
-	s3Secret = flag.String("s3secret", "", "s3 secret")
-	s3Bucket = flag.String("s3bucket", "", "s3 bucket name")
+	psqlUrl string
+	s3Url string
+	s3Key string
+	s3Secret string
+	s3Bucket string
 	s3Client *minio.Client
 )
 
@@ -30,6 +30,12 @@ type NodestoreNode struct {
 }
 
 func init() {
+	flag.StringVar(&psqlUrl, "db", "postgres://postgres:@localhost:5432", "postgres db url. e.g. postgres://postgres:@localhost:5432")
+	flag.StringVar(&s3Url, "s3domain", "", "s3 provider domain eg. s3.example.com")
+	flag.StringVar(&s3Key, "s3key", "", "s3 access key.")
+	flag.StringVar(&s3Secret, "s3secret", "", "s3 secret")
+	flag.StringVar(&s3Bucket, "s3bucket", "", "s3 bucket name")
+
 	if s3Url == "" {
 		panic("need an s3 domain. Provider one with the --s3domain parameter")
 	}
