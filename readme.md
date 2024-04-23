@@ -22,12 +22,22 @@ docker compose up -d postgres
 
 3. Run this tool using these parameters.
 ```sh
-sentry-s3-nodestore-migration \
-    --db postgres://postgres:@localhost:5432 \ # (optional)
-    --s3domain s3.example.com \
-    --s3key YOURKEY \
-    --s3secret YOURSECRET \
-    --s3bucket BUCKETNAME
+  -db string
+        postgres db url. e.g. postgres://postgres:@localhost:5432 (default "postgres://postgres:@localhost:5432")
+  -debug
+        debug mode shows more infomation
+  -limit int
+        max amount of rows to parse at once (default 1000)
+  -offset int
+        offset to start at
+  -s3bucket string
+        s3 bucket name
+  -s3domain string
+        s3 provider domain eg. s3.example.com
+  -s3key string
+        s3 access key.
+  -s3secret string
+        s3 secret
 ```
 
 ## Useful commands
@@ -36,6 +46,14 @@ Go in to postgres
 docker exec -it sentry-self-hosted-postgres-1 psql -U postgres
 ```
 Count rows
-```sh
-postgres=# select count(*) from public.nodestore_node;
+```sql
+select count(*) from public.nodestore_node;
+```
+Get size of nodestore
+```sql
+select pg_size_pretty(pg_total_relation_size('public.nodestore_node'));
+```
+Get size of largest event in kb
+```sql
+select id, pg_column_size(data) / 1000 as row_size from public.nodestore_node order by row_size desc limit 1;
 ```
