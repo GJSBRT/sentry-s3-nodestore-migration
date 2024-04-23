@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	
 	"github.com/jackc/pgx/v5"
+	"github.com/schollz/progressbar/v3"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -21,6 +22,9 @@ var (
 	s3Key string
 	s3Secret string
 	s3Bucket string
+	offset int
+	limit int
+	debug bool
 	s3Client *minio.Client
 )
 
@@ -35,21 +39,29 @@ func init() {
 	flag.StringVar(&s3Key, "s3key", "", "s3 access key.")
 	flag.StringVar(&s3Secret, "s3secret", "", "s3 secret")
 	flag.StringVar(&s3Bucket, "s3bucket", "", "s3 bucket name")
+	flag.IntVar(&offset, "offset", 0, "offset to start at")
+	flag.IntVar(&limit, "limit", 1000, "max amount of rows to parse at once")
+	flag.BoolVar(&debug, "debug", false, "debug mode shows more infomation")
+	flag.Parse()
 
 	if s3Url == "" {
-		panic("need an s3 domain. Provider one with the --s3domain parameter")
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
 
 	if s3Key == "" {
-		panic("need an s3 key. Provider one with the --s3key parameter")
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
 	
 	if s3Secret == "" {
-		panic("need an s3 secret. Provider one with the --s3secret parameter")
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
 	
 	if s3Bucket == "" {
-		panic("need an s3 bucket name. Provider one with the --s3bucket parameter")
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
 }
 
@@ -70,9 +82,8 @@ func main() {
 	defer dbPool.Close(context.Background())
 	
 	run := true
-	var offset int
 	for run {
-		log.Printf("offset %d", offset)
+		log.Printf("Migrating next %d entries. Current offset: %d", limit, offset)
 
 		nodes := getRows(dbPool, offset)
 
@@ -82,22 +93,24 @@ func main() {
 		}
 
 		var wg sync.WaitGroup
+		bar := progressbar.Default(int64(limit))
 		for _, node := range nodes {
 			wg.Add(1)
 
 			go func() {
 				defer wg.Done()
+				defer bar.Add(1)
 				processRow(&node)
 			}()
 		}
 		wg.Wait()
 
-		offset += 1000
+		offset += limit
 	} 
 }
 
 func getRows(dbPool *pgx.Conn, offset int) (nodes []NodestoreNode) {
-	rows, err := dbPool.Query(context.Background(), "SELECT id, data FROM public.nodestore_node LIMIT 1000 OFFSET $1", offset)
+	rows, err := dbPool.Query(context.Background(), "SELECT id, data FROM public.nodestore_node ORDER BY timestamp DESC LIMIT $1 OFFSET $2", limit, offset)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Query failed: %v\n", err)
 		os.Exit(1)
@@ -138,5 +151,7 @@ func processRow(node *NodestoreNode) {
 		return
 	}
 
-	log.Printf("Done running node id %s", node.ID)
+	if debug {
+		log.Printf("Done running node id %s", node.ID)
+	}
 }
