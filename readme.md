@@ -2,6 +2,11 @@
 This is a veeery simple script which will migrate your nodestore data from postgres to your s3 provider. This can also be used if you'd just like to export your nodestore data to s3.
 This script is meant to be used for people migrating their Sentry to s3 using https://github.com/kanadaj/sentry-s3-nodestore 
 
+## Speed
+Mirgating events can take a long time if you have many events. I have migrated about 22 milion events over several days. The speed of migration is highly depended on the speed your S3 provider.
+
+If migrating an event took 50ms. If we multiply that by 22 milion events then we get ~12 days of continous migrating. So this is something to keep in mind.
+
 ## Running it
 There are a few things you will need to do.
 
